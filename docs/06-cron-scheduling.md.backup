@@ -1,0 +1,120 @@
+# 定時任務與排程 (Cron Scheduling)
+
+> 最後更新：2026-04-22
+
+## 什麼是定時任務與排程？
+OpenClaw 的 Cron 是內建於 Gateway 的排程器，能夠在指定時間自動執行任務，例如發送提醒、執行備份、檢查郵件或執行任何可以透過指令或自動代理完成的工作。Cron 會持久化工作定義，在適當時刻喚醒代理執行，並可將結果傳回聊天頻道或 Webhook 端點。
+
+## 安裝 / 環境需求
+- 已安裝 OpenClaw 並完成基本設定（請參見 01-introduction.md 與 02-environment-setup.md）
+- 無需額外安裝，Cron 功能隨 OpenClaw 一起提供
+- 確保 Gateway 持續運行（可透過 `openclaw gateway start` 或設定為開機自動啟動）
+
+## 核心概念
+Cron 工作透過三種排程類型定義：
+1. **一次性 (`--at`)**：在特定時間點執行一次（支援 ISO 8601 或相對時間如 `20m`）。
+2. **固定間隔 (`--every`)**：每隔固定時間重複執行。
+3. **Cron 表達式 (`--cron`)**：使用標準 5 欄位或 6 欄位 Cron 語法，可指定時區。
+
+工作執行方式分為四種：
+- **Main session**：下一次心跳週期執行，適合提醒與系統事件。
+- **Isolated**：專用的 `cron:<jobId>` 工作階段，適合報告與背景作業。
+- **Current session**：绑定到建立時的會話，適合需要上下文的週期性工作。
+- **Custom session**：具名持久會話，適合需要建構先前摘要的工作流程（如每日站會）。
+
+每次執行會建立背任務記錄，並支援失敗重試、模型覆寫、工具限制等進階選項。
+
+## CLI 指令說明
+以下是常用的 Cron 指令：
+
+```bash
+# 新增一次性提醒（主會話）
+openclaw cron add \
+  --name "Reminder" \
+  --at "2026-02-01T16:00:00Z" \
+  --session main \
+  --system-event "Reminder: check the cron docs draft" \
+  --wake now \
+  --delete-after-run
+
+# 查看所有工作
+openclaw cron list
+
+# 顯示特定工作詳情
+openclaw cron show <job-id>
+
+# 編輯工作
+openclaw cron edit <job-id> --message "Updated prompt" --model "opus"
+
+# 立即執行工作（忽略排程）
+openclaw cron run <job-id>
+
+# 只有在到期時才執行
+openclaw cron run <job-id> --due
+
+# 查看執行歷史
+openclaw cron runs --id <job-id> --limit 20
+
+# 刪除工作
+openclaw cron remove <job-id>
+
+# 設定失敗通知目的地（全域）
+openclaw config set cron.failureDestination "webhook:https://example.com/hooks"
+```
+
+## 實際應用範例
+
+### 場景一：每早晨簡報
+設定每日上午 7:00（洛杉磯時區）自動產出隔夜更新摘要並發送到 Slack 頻道。
+```bash
+openclaw cron add \
+  --name "Morning brief" \
+  --cron "0 7 * * *" \
+  --tz "America/Los_Angeles" \
+  --session isolated \
+  --message "Summarize overnight updates." \
+  --announce \
+  --channel slack \
+  --to "channel:C1234567890"
+```
+
+### 場景二：週深度分析
+每週一早上 6:00 執行深度分析，使用較強的模型與深度思考，結果宣布到主會話。
+```bash
+openclaw cron add \
+  --name "Deep analysis" \
+  --cron "0 6 * * 1" \
+  --tz "America/Los_Angeles" \
+  --session isolated \
+  --message "Weekly deep analysis of project progress." \
+  --model "opus" \
+  --thinking high \
+  --announce
+```
+
+## 應用主題分類
+
+| 主題 | 適用場景 | 複雜度 |
+|------|---------|-------|
+| 股票分析 | 每日收盤後自動抓取股票資料並生成簡報 | ⭐⭐⭐ |
+| 自動寫 code | 每週檢查代碼倉庫並建議重構 | ⭐⭐ |
+| 文件分析 | 每月摘要最新研究論文並發送給團隊 | ⭐⭐ |
+
+## 常見問題與排錯
+| 問題 | 原因 | 解法 |
+|------|------|------|
+| Cron 工作未觸發 | `cron.enabled` 設為 false 或環境變數 `OPENCLAW_SKIP_CRON=1` | 檢查設定：`openclaw config show cron`；確保 Gateway 持續運行 |
+| 工作觸發但無法送達 | 目標頻道或 Webhook 權限錯誤 | 檢查傳遞目的地設定；確認 token 或憑證有效；查看 `openclaw logs` |
+| 時區不符導致執行時間錯誤 | 未指定 `--tz` 而主機時區與預期不符 | 明確加入 `--tz <時區>`，例如 `--tz "Asia/Taipei"` |
+| 隔離工作遺失上下文 | 使用 `--session isolated` 但需要先前摘要 | 改用 `--session session:custom-id` 建立具名持久會話 |
+| 模型覆寫未生效 | 請求的模型不在允許清單中 | 檢查模型允許清單；使用 `--model` 時確認模型被允許，或調整 `agents.config` 中的 `allowedModels` |
+
+## 參考資源
+- [官方文件 - Scheduled Tasks](https://docs.openclaw.ai/automation/cron-jobs) — 最新官方說明
+- [GitHub](https://github.com/openclaw/openclaw) — 原始碼與 Issues
+- [Discord](https://discord.gg/clawd) — 社群討論
+- [Stack Junkie - OpenClaw Cron Jobs Guide](https://www.stack-junkie.com/blog/openclaw-cron-jobs-automation-guide) — 詳細範例與除錯技巧
+- [Clawgo.net - OpenClaw Cron Jobs Guide](https://clawgo.net/openclaw-cron-jobs-guide/) — 快速入門與進階用法
+
+---
+*此文件由 AI agent 自動生成，最後更新：2026-04-22*
