@@ -1,7 +1,7 @@
-# 深度學習任務 - 文件分析工作流程
+# 深度學習任務 - 媒體生成工作流程
 
 > 建立日期：2026-04-25
-> 對應 doc：/Users/daniel.chang/Desktop/openclaw-learning/docs/topic-document-analysis.md
+> 對應 doc：/Users/daniel.chang/Desktop/openclaw-learning/docs/topic-media-generation.md
 > 狀態：待執行
 
 ## 內容要求
@@ -14,8 +14,8 @@
 - [ ] 進階場景範例
 
 ## 應用場景
-- [ ] 場景一：論文摘要與關鍵詞提取
-- [ ] 場景二：合規性文件審查
+- [ ] 場景一：音樂生成與編輯
+- [ ] 場景二：視頻生成與後製
 
 ## 參考資源
 - [ ] 官方文件連結

@@ -1,7 +1,7 @@
-# 深度學習任務 - 文件分析工作流程
+# 深度學習任務 - 研究調查工作流程
 
 > 建立日期：2026-04-25
-> 對應 doc：/Users/daniel.chang/Desktop/openclaw-learning/docs/topic-document-analysis.md
+> 對應 doc：/Users/daniel.chang/Desktop/openclaw-learning/docs/topic-research-workflow.md
 > 狀態：待執行
 
 ## 內容要求
@@ -14,8 +14,8 @@
 - [ ] 進階場景範例
 
 ## 應用場景
-- [ ] 場景一：論文摘要與關鍵詞提取
-- [ ] 場景二：合規性文件審查
+- [ ] 場景一：學術文獻自動化整理
+- [ ] 場景二：研究數據收集與分析
 
 ## 參考資源
 - [ ] 官方文件連結

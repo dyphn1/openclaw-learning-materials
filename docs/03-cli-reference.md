@@ -17,12 +17,15 @@ OpenClaw CLI 不是單純把 HTTP API 包一層殼，而是整個本地操作面
 | 模組 | 檔案 | 作用 |
 |------|------|------|
 | 根命令分類 | `src/cli/program/core-command-descriptors.ts` | 定義核心命令名稱、描述與是否有子命令 |
-| 子命令註冊 | `src/cli/program/register.subclis-core.ts` | 將 `cron`、`channels`、`sandbox`、`nodes` 等 CLI 模組掛到主程式 |
+| 子命令註冊 | `src/cli/program/register.subclis-core.ts` | 將 `cron`、`tui`、`channels`、`sandbox`、`nodes` 等 CLI 模組掛到主程式 |
 | Config CLI | `src/cli/config-cli.ts` | 定義 `config get/set/unset/file/schema/validate` 與 builder/dry-run 模式 |
 | Cron CLI 入口 | `src/cli/cron-cli/register.ts` | 註冊 `cron` 命令與 docs link |
 | Cron add/list/status | `src/cli/cron-cli/register.cron-add.ts` | 實作 `cron add`、`list`、`status` |
 | Cron edit | `src/cli/cron-cli/register.cron-edit.ts` | 實作 patch 型編輯與 failure alert / delivery patch |
 | Cron simple | `src/cli/cron-cli/register.cron-simple.ts` | 實作 `show`、`runs`、`run`、`rm`、`enable`、`disable` |
+| TUI CLI 入口 | `src/cli/tui-cli.ts` | 註冊 `tui` 命令，處理 `--local` 模式與參數驗證（v2026.4.23 新增） |
+| TUI 核心 | `src/tui/tui.ts` | TUI 後端選擇邏輯與 UI 管理器 |
+| TUI 嵌入式後端 | `src/tui/embedded-backend.ts` | 本地 agent 執行階段的直接溝通介面（v2026.4.23 新增） |
 
 ### 關鍵型別與控制面
 
@@ -69,10 +72,16 @@ flowchart LR
 | Cron 入口 | `src/cli/cron-cli/register.ts` | 組合 cron 子命令 |
 | Cron add 驗證 | `src/cli/cron-cli/register.cron-add.ts` | 互斥條件、預設 session、delivery 規則 |
 | Cron edit 驗證 | `src/cli/cron-cli/register.cron-edit.ts` | patch 行為、enable/disable、payload 互斥 |
+| TUI CLI 入口 | `src/cli/tui-cli.ts` | `tui` 命令註冊與 `--local` 模式驗證（v2026.4.23） |
+| TUI 後端選擇 | `src/tui/tui.ts` | EmbeddedTuiBackend vs GatewayChatClient 選擇邏輯 |
+| TUI 嵌入式後端 | `src/tui/embedded-backend.ts` | 本地 agent 事件處理與狀態管理（v2026.4.23） |
+| TUI 測試 | `src/tui/embedded-backend.test.ts` | 事件橋接、中止機制與 embedded mode 測試 |
 | Config 第一方 docs | `docs/cli/config.md` | 官方解釋 config path、set modes、dry-run |
 | Cron 第一方 docs | `docs/cli/cron.md` | 官方說明 cron 語意、delivery、retention |
+| TUI 第一方 docs | `docs/cli/tui.md` | 官方說明 TUI 用法與嵌入式模式（v2026.4.23） |
 | Config 測試 | `src/cli/config-cli.test.ts` | `validate` 成功/失敗與 `--json` 行為 |
 | Cron 測試 | `src/cli/cron-cli.test.ts` | DST、`--tz`、delivery default、account 等邊界 |
+| TUI 測試 | `src/tui/embedded-backend.test.ts` | 事件橋接、中止機制與 embedded mode 旗標測試 |
 
 ## CLI 指令完整參考
 
@@ -98,6 +107,7 @@ openclaw
   ├─ sessions
   ├─ tasks
   ├─ cron
+  ├─ tui                  # 終端 UI（v2026.4.23 新增嵌入式模式）
   ├─ channels
   ├─ secrets
   ├─ skills
@@ -124,6 +134,7 @@ openclaw
 | `agents` | 是 | `src/cli/program/core-command-descriptors.ts` | 管理 isolated agents |
 | `sessions` | 是 | `src/cli/program/core-command-descriptors.ts` | session 檢視與管理 |
 | `cron` | 是 | `src/cli/cron-cli/register.ts` | 排程與背景工作 |
+| `tui` | 是 | `src/cli/tui-cli.ts` | 終端 UI（v2026.4.23 新增嵌入式模式） |
 
 ### 樣本一：`openclaw config`
 
@@ -357,6 +368,109 @@ openclaw cron run <job-id>
 openclaw cron runs --id <job-id> --limit 20
 ```
 
+### 樣本三：`openclaw tui`（v2026.4.23 新增）
+
+`openclaw tui` 是 v2026.4.23 新增的終端端 UI 功能，支援**本地嵌入式模式**，允許在不連接 Gateway 的情況下直接運行 OpenClaw 聊天。這是 OpenClaw 架構的重大革新，提供離線使用能力、簡化部署與安全隔離的選項。
+
+#### 子命令總覽
+
+| 指令 | Alias | 原始碼入口 | 說明 |
+|------|-------|------------|------|
+| `openclaw tui` | `chat`, `terminal` | `src/cli/tui-cli.ts` | 啟動終端 UI，預設連接到 Gateway |
+| `openclaw tui --local` | 無 | `src/cli/tui-cli.ts` | 啟動本地嵌入式模式（新功能） |
+| `openclaw tui --url <url>` | 無 | `src/cli/tui-cli.ts` | 連接到指定 Gateway |
+| `openclaw tui --session <key>` | 無 | `src/cli/tui-cli.ts` | 指定會話鍵 |
+| `openclaw tui --deliver` | 無 | `src/cli/tui-cli.ts` | 傳送助手回覆 |
+| `openclaw tui --thinking <level>` | 無 | `src/cli/tui-cli.ts` | 思考等級覆蓋 |
+| `openclaw tui --message <text>` | 無 | `src/cli/tui-cli.ts` | 連接後發送初始訊息 |
+| `openclaw tui --timeout-ms <ms>` | 無 | `src/cli/tui-cli.ts` | Agent 超時時間 |
+| `openclaw tui --history-limit <n>` | 無 | `src/cli/tui-cli.ts` | 歷史記錄載入限制 |
+
+#### 核心參數矩陣
+
+| 參數 | 型別 | 必填 | 預設值 | 說明 |
+|------|------|------|--------|------|
+| `--local` | boolean | 否 | `false` | 啟用嵌入式模式，與遠端選項互斥 |
+| `--url` | string | 否 | — | Gateway WebSocket URL（本地模式不使用） |
+| `--token` | string | 否 | — | Gateway token（本地模式不使用） |
+| `--password` | string | 否 | — | Gateway password（本地模式不使用） |
+| `--session` | string | 否 | `"main"` 或 workspace 推導值 | 會話鍵 |
+| `--deliver` | boolean | 否 | `false` | 是否傳送助手回覆 |
+| `--thinking` | string | 否 | — | 思考等級覆蓋 |
+| `--message` | string | 否 | — | 初始訊息 |
+| `--timeout-ms` | number | 否 | — | 超時時間（毫秒） |
+| `--history-limit` | number | 否 | `200` | 歷史記錄限制 |
+
+#### 參數限制與互動規則
+
+| 規則 | 說明 | 來源 |
+|------|------|------|
+| 本地模式互斥 | `--local` 不能與 `--url`、`--token`、`--password` 同時使用 | `src/cli/tui-cli.ts` |
+| 別名自動設定 | `chat` 和 `terminal` 自動啟用 `--local` | `src/cli/tui-cli.ts` |
+| 會話自動推導 | 在 workspace 目錄中自動選擇對應 agent | `src/tui/tui.ts` |
+| timeout 轉換 | `--timeout-ms` 透過 `parseTimeoutMs` 轉換為秒數 | `src/cli/tui-cli.ts` |
+| 歷史限制 | 超過 1000 條記錄會自動限制為 1000 | `src/tui/embedded-backend.ts` |
+| Plugin approval | 本地模式仍保持安全閘道，需手動批准工具 | `src/tui/embedded-backend.ts` |
+
+#### 實際指令範例
+
+基本本地模式啟動：
+
+```bash
+# 使用別名啟動嵌入式 TUI（v2026.4.23 新功能）
+openclaw chat
+openclaw terminal
+
+# 使用明確的本地模式旗標
+openclaw tui --local
+
+# 在指定會話中啟動
+openclaw tui --local --session isolated
+```
+
+進階配置選項：
+
+```bash
+# 自訂歷史記錄限制
+openclaw tui --local --history-limit 500
+
+# 自訂超時時間
+openclaw tui --local --timeout-ms 30000
+
+# 啟用回傳模式
+openclaw tui --local --deliver --session main
+
+# 指定思考等級
+openclaw tui --local --thinking high
+
+# 連接後自動發送初始訊息
+openclaw tui --local --message "幫我分析這個專案的架構"
+```
+
+#### 特殊功能與使用場景
+
+1. **離線診斷模式**：
+   ```bash
+   openclaw chat
+   # 在 TUI 中進行配置檢查
+   !openclaw config validate
+   !openclaw config file
+   !openclaw doctor
+   ```
+
+2. **開發環境快速測試**：
+   ```bash
+   cd /path/to/project
+   openclaw terminal
+   # 直接在終端測試 agent 功能
+   ```
+
+3. **安全隔離執行**：
+   ```bash
+   openclaw tui --local --no-deliver --session isolated
+   # 所有操作都在本地完成，無外部網路連接
+   ```
+
 ## 進階使用場景
 
 ### 場景一：把 CLI 文件化流程複製到任一子命令
@@ -405,9 +519,10 @@ CLI 本身也有與設定互動的幾個關鍵面：
 
 ## 已知限制與注意事項
 
-- 本文件目前尚未逐條展開 `message`、`channels`、`skills`、`sandbox`、`nodes` 等所有子命令的 option matrix，因此標記為「根命令 + config/cron 樣本完整」。
+- 本文件目前尚未逐條展開 `message`、`channels`、`skills`、`sandbox`、`nodes` 等所有子命令的 option matrix，因此標記為「根命令 + config/cron/tui 樣本完整」。
 - `config` 看似單純，但實際上 builder mode、batch mode、protected path replace policy 都是高風險面；若 agent 沒讀 `docs/cli/config.md` 就直接生成文件，極容易漏掉。
 - `cron` 的時區與 DST 行為不能憑直覺寫文件，必須看測試；尤其 `--tz` 與 offset-less `--at` 的互動，錯一個細節就會讓排程在實務上失效。
+- `tui` 的嵌入式模式是 v2026.4.23 新功能，雖然已涵蓋核心功能，但 plugin approval gates 的具體互動邊界仍需要更多實務驗證。
 
 ## 常見問題排錯
 
@@ -418,6 +533,9 @@ CLI 本身也有與設定互動的幾個關鍵面：
 | `--tz` 沒生效 | 搭配了 `--every`，或 `--at` 已有 offset | `openclaw cron add ... --json` | 改用 offset-less `--at`，不要把 `--tz` 與 `--every` 混用 |
 | config 批次改寫後丟失既有項目 | 對 protected map 做了 replace 而非 merge | `openclaw config get <path> --json` | 對 map/list 優先用 `--merge`，必要時才 `--replace` |
 | `cron add` 報 payload 錯誤 | 同時傳了 `--system-event` 與 `--message`，或 session/payload 不匹配 | `openclaw cron add --help` | main job 用 `--system-event`，isolated/current job 用 `--message` |
+| `tui --local` 與其他選項衝突 | 同時使用了 `--url`、`--token` 或 `--password` | 檢查命令列參數 | 移除遠端相關選項，只保留 `--local` |
+| TUI 本地模式無法啟動 | 配置檔案存在錯誤 | `openclaw config validate` | 使用 `openclaw configure` 或 `openclaw doctor --fix` 修復配置 |
+| 嵌入式模式工具 approval 失敗 | Plugin 需要使用者確認 | 在 TUI 中手動確認 | 確認工具使用授權 |
 
 ## 參考資源
 
@@ -428,4 +546,5 @@ CLI 本身也有與設定互動的幾個關鍵面：
 
 ## 更新記錄
 
+- 2026-04-25：新增 `openclaw tui` 樣本分析，涵蓋 v2026.4.23 新增的嵌入式模式功能，包括參數矩陣、互斥規則、使用場景與故障排除；更新根命令表格與核心模組說明
 - 2026-04-24：重寫整份文件；改用實際原始碼入口、第一方 docs 與測試為基準，並把 `config` / `cron` 兩條命令線改寫成可複製的 CLI 深度分析樣本

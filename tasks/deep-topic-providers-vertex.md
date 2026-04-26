@@ -1,0 +1,24 @@
+# 深度學習任務 - Providers 與 Vertex AI 恢復
+
+> 建立日期：2026-04-26
+> 對應 doc：/Users/daniel.chang/Desktop/openclaw-learning/docs/09-providers.md
+> 狀態：待執行
+
+## 內容要求
+- [ ] 清晰定義與用途說明
+- [ ] 安裝/環境需求
+- [ ] 完整設定範例
+
+## 實作範例
+- [ ] 基本使用範例（含程式碼）
+- [ ] 進階場景範例
+
+## 應用場景
+- [ ] 場景一：Anthropic Vertex AI ADC 恢復
+- [ ] 場景二：模型發現與 synthetic auth
+- [ ] 場景三：環境變數快照與 probe 路徑
+
+## 參考資源
+- [ ] 官方文件連結
+- [ ] 社群資源連結
+- [ ] 相關影片/文章

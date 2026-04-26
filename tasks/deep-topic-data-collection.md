@@ -1,7 +1,7 @@
-# 深度學習任務 - 文件分析工作流程
+# 深度學習任務 - 數據收集工作流程
 
 > 建立日期：2026-04-25
-> 對應 doc：/Users/daniel.chang/Desktop/openclaw-learning/docs/topic-document-analysis.md
+> 對應 doc：/Users/daniel.chang/Desktop/openclaw-learning/docs/topic-data-collection.md
 > 狀態：待執行
 
 ## 內容要求
@@ -14,8 +14,8 @@
 - [ ] 進階場景範例
 
 ## 應用場景
-- [ ] 場景一：論文摘要與關鍵詞提取
-- [ ] 場景二：合規性文件審查
+- [ ] 場景一：網頁內容批量抓取
+- [ ] 場景二：API 數據整合與清洗
 
 ## 參考資源
 - [ ] 官方文件連結
