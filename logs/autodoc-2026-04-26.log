@@ -1,28 +1,88 @@
-=== 執行時間：2026-04-26 12:00 (Asia/Taipei) ===
+=== 執行時間：2026-04-26 18:04 (Asia/Taipei) ===
 
 【第一階段 - 現況盤點】
 - 最新分析報告版本：v2026.4.23
-- 從分析報告發現的更新需求：12 項（主要為安全修復、TUI 嵌入模式、Provider 恢復等）
-- 現有 docs 需深化清單：3 個（channels.md 基礎內容待深化、skills-agents.md 需更新 MCP 整合、providers.md 需更新 Vertex AI 恢復）
-- 原始碼中未記錄的功能：security-cli、webhooks-cli、proxy-cli 等新 CLI 命令待文檔化
+- 從分析報告發現的更新需求：
+  1. TUI 嵌入模式是 v2026.4.23 的新功能，需要更新文檔
+  2. 多個安全修復（QQBot、MCP、WhatsApp、群組聊天等）
+  3. MCP 工具安全限制：owner-only 工具（如 cron）不對 non-owner MCP 呼叫者開放
+  4. 插件啟動改進：恢復 bundled plugin 解析，避免 Telegram/Discord crash-loop
+  5. 集成 Claude CLI 與 OpenClaw workspace identity 的統一
+- 現有 docs 需深化清單：
+  1. 03-cli-reference.md - 已涵蓋 config/cron/tui，但可補充其他命令線
+  2. 11-tui-embedded-mode.md - 已基於最新分析報告建立，深度足
+  3. 04-configuration.md - 可檢查是否涵蓋最新的 schema 變更
+  4. 06-cron-scheduling.md - 可檢查是否涵蓋最新的安全修復
+- 原始碼中未記錄的功能：MCP 工具安全限制、QQBot 安全修復、插件啟動改進
 
 【第二階段 - 主題盤點】
-- 現有 docs 主題數：14 個
-- 缺口主題數：5 個（security、webhooks、proxy、skills MCP 整合、providers Vertex AI）
-- 新建 task 檔案：5 個
+- 現有 docs 主題數：22 個基本文件 + 15 個深度任務 + 3 個教學
+- 缺口主題數：無明顯缺口，主要是現有文檔的深化需求
+- 新建 task 檔案：無（現有任務已涵蓋主要領域）
 
 【第三階段 - 深度撰寫】
-- 處理主題數：2 個
-  - 05-channels.md（深化）— 主要新增安全渲染、結構化物件處理、plugin approval gates
-  - topic-security-integration.md（新建）— 安全 CLI 命令與通道安全整合
-- 收集參考資源：6 個 URL（已存入 references/）
+- 處理主題數：0（本次執行以現況盤點為主）
+- 收集參考資源：0 個 URL
 - 失敗：0 個
 
 【第四階段 - 實戰教學】
-- 本次主題：security-integration-workflow
-- 狀態：完成
+- 本次主題：未選擇
+- 狀態：未執行
 
 【本次執行摘要】
-- 總處理主題數：2
-- 新增 references 檔案：2 個
-- 下次建議優先處理：skills-agents.md（更新 MCP 整合內容）
+- 總處理主題數：0
+- 新增 references 檔案：0 個
+- 下次建議優先處理：深化 MCP 工具安全限制文件（原因：v2026.4.23 的重要安全修復，涉及非所有者權限控制）
+
+## 第一階段詳細發現
+
+### TUI 嵌入模式分析
+- **版本**：v2026.4.23 新增功能
+- **核心價值**：離線可用性、降低部署複雜度、資源隔離、安全維持
+- **技術實現**：EmbeddedTuiBackend 本地 agent 執行階段、事件橋接、中止機制
+- **安全特性**：保持 plugin approval gates，不繞過安全驗證
+- **測試覆蓋**：有單元測試，但缺乏完整 CLI 到嵌入模式的整合測試
+
+### 安全修復發現
+1. **QQBot 安全**：需要 framework auth for `/bot-approve`，防止未授權修改 exec approval
+2. **MCP 工具安全**：ACPX OpenClaw tools bridge 不列出或調用 owner-only 工具（如 cron）
+3. **WhatsApp 安全**：contact/vCard/location 結構化物件隔離，防止隱藏 prompt-injection
+4. **群組聊天安全**：channel-sourced group names 和 participant labels 隔離
+5. **Feishu 啟動**：延遲 Lark SDK 直到 runtime deps 可用
+
+### 構件改進
+1. **插件啟動**：恢復 bundled plugin 解析，避免 Telegram/Discord crash-loop
+2. **Claude CLI 集成**：統一 prompt-build hooks 和 trigger/channel context
+3. **Discord 插件啟動**：延遲 subagent hooks 以減少入口點開銷
+4. **記憶體管理**：標準化 MEMORY.md 處理，split-brain 檔案合併
+
+### 配置與提供者
+1. **Anthropic Vertex**：恢復 ADC-backed model discovery
+2. **Codex harness**：固定每個 session 的 embedded harness 選擇
+3. **Memory doctor**：新增合併 split-brain root 功能
+
+## 建議深化方向
+
+### 優先級 1：MCP 工具安全限制（高安全風險）
+- 需要建立詳細的 MCP 工具權限控制文件
+- 解釋 owner-only 工具的定義和限制
+- 提供 safe MCP integration 的最佳實踐
+
+### 優先級 2：QQBot 安全改進
+- 文件化 `/bot-approve` 的新的 framework auth 需求
+- 解釋安全修復的影響和使用方式
+
+### 優先級 3：插件啟動改進
+- 更新插件安裝和啟動流程文件
+- 解釋 bundled plugin 解析的修復
+
+### 優先級 4：配置管理改進
+- 更新 Memory doctor 功能
+- 標準化配置文件管理流程
+
+## 下次執行建議
+
+1. 選擇 MCP 工具安全限制作為主要深化主題
+2. 收集相關的安全文件和最佳實踐
+3. 深化現有的 MCP 文件，加入權限控制說明
+4. 檢查其他安全相關文件的更新需求
