@@ -350,6 +350,211 @@ openclaw config set secrets.providers.vault \
 - 但是否「立即影響既有 session / 既有 cron job / 既有 channel 連線」要視子系統而定，不能一概而論。
 - 嚴格驗證失敗時，Gateway 不會接受新設定；在某些情況下還會還原 last-known-good config。
 
+## 安全配置與結構化物件處理
+
+### 概覽
+
+OpenClaw v2026.4.23 引入了多項安全修復，主要針對三個風險面：
+1. **Bot approval gates**：防止未授權的操作執行
+2. **結構化物件渲染**：防止 WhatsApp 群組和群聊中的 prompt 注入
+3. **工具權限隔離**：MCP 工具的 owner-only 限制
+
+### Bot Approval Gates 安全配置
+
+#### 全局 Bot approval 策略
+
+| 路徑 | 型別 | 預設值 | 作用 | 來源 |
+|------|------|--------|------|------|
+| `gateway.approvals.mode` | string | `"prompt"` | approval 模式：`"none"`\|`"prompt"`\|`"auto"` | `src/config/types.gateway.ts` |
+| `gateway.approvals.requiredTools` | string[] | — | 必須 approval 的工具列表 | `src/config/schema.help.ts` |
+| `gateway.approvals.requiredExec` | string[] | — | 必須 approval 的 exec 類型 | `src/config/schema.help.ts` |
+| `gateway.approvals.timeoutMs` | number | `30000` | approval 請求超時時間 | `src/config/schema.help.ts` |
+
+#### QQBot 特定安全配置
+
+```json5
+{
+  channels: {
+    qq: {
+      enabled: true,
+      botApproval: {
+        requireFrameworkAuth: true, // v2026.4.23 新增：要求框架認證
+        slashCommandPath: "/bot-approve", // 安全 approval 路徑
+        allowUnauthorizedSenders: false, // 拒絕未授權發送者
+      },
+      // ... 其他 QQBot 配置
+    }
+  }
+}
+```
+
+### 結構化物件安全渲染配置
+
+#### WhatsApp 安全處理
+
+```json5
+{
+  channels: {
+    whatsapp: {
+      enabled: true,
+      security: {
+        // v2026.4.23 新增：結構化物件隔離處理
+        renderStructuredObjects: true,
+        maxAttachmentSize: "10MB",
+        allowVCardParsing: false, // 防止惡意 vCard
+        sanitizeLocationLabels: true, // 清洗位置標籤
+        maxParticipantsPerGroup: 500,
+      },
+      // ... 其他 WhatsApp 配置
+    }
+  }
+}
+```
+
+#### 群組聊天安全配置
+
+```json5
+{
+  channels: {
+    discord: {
+      enabled: true,
+      security: {
+        // v2026.4.23 新增：群組名稱和參與者標籤隔離
+        sanitizeGroupNames: true,
+        sanitizeParticipantLabels: true,
+        maxMessageLength: 2000,
+        rateLimit: {
+          messages: 5,
+          period: "1s"
+        }
+      }
+    },
+    telegram: {
+      enabled: true,
+      security: {
+        sanitizeGroupNames: true,
+        maxMessageLength: 4096,
+        allowInlineQueries: false,
+      }
+    }
+  }
+}
+```
+
+### MCP 工具安全配置
+
+#### Owner-only 工具限制
+
+```json5
+{
+  mcp: {
+    enabled: true,
+    security: {
+      // v2026.4.23 新增：只允許 owner 調用特定工具
+      ownerOnlyTools: [
+        "cron",
+        "config",
+        "system",
+        "exec"
+      ],
+      // 限制 ACPX OpenClaw tools bridge
+      restrictAcpxTools: true,
+      // 工具調用超時
+      toolTimeoutMs: 30000,
+      // 允許的工具列表（空表示全部允許）
+      allowedTools: [],
+      // 拒絕的工具列表
+      blockedTools: ["eval", "exec"]
+    }
+  }
+}
+```
+
+#### 工具權限級別配置
+
+| 權限級別 | 說明 | 允許的工具 | 來源 |
+|----------|------|------------|------|
+| `owner` | 完全權限 | 所有工具 | `src/config/types.mcp.ts` |
+| `trusted` | 受信任權限 | 基本工具 + 配置工具 | `src/config/types.mcp.ts` |
+| `restricted` | 限制權限 | 僅讀取工具 | `src/config/types.mcp.ts` |
+| `none` | 無權限 | 無 | `src/config/types.mcp.ts` |
+
+### 全域安全策略
+
+```json5
+{
+  // 全域安全設定
+  security: {
+    // 內容安全
+    contentSanitization: {
+      enabled: true,
+      removeHtml: true,
+      removeScriptTags: true,
+      maxInputLength: 10000,
+    },
+    
+    // 執行安全
+    executionSafety: {
+      requireApprovalFor: [
+        "exec",
+        "system",
+        "file-write"
+      ],
+      maxConcurrentExecutions: 3,
+      executionTimeoutMs: 30000,
+    },
+    
+    // 網路安全
+    networkSecurity: {
+      allowedDomains: ["*.openclaw.ai", "localhost"],
+      blockSSRF: true,
+      maxRedirects: 3,
+    },
+    
+    // 記憶體安全
+    memorySafety: {
+      maxSessionHistory: 1000,
+      maxRunBuffer: 1000000, // 1MB
+      autoCleanup: true,
+    }
+  }
+}
+```
+
+### 安全配置驗證
+
+```bash
+# 驗證安全配置
+openclaw config validate --security
+
+# 檢查安全設定
+openclaw config get security.contentSanitization
+openclaw config get security.executionSafety
+openclaw config get security.networkSecurity
+
+# 測試 approval 機制
+openclaw config set gateway.approvals.mode "prompt"
+openclaw config validate
+```
+
+### 安全配置最佳實踐
+
+1. **生產環境建議**：
+   - 啟用所有安全功能
+   - 使用 `prompt` 模式進行 approval
+   - 限制工具權限
+   - 定期審計配置
+
+2. **開發環境建議**：
+   - 可以使用 `none` 模式加速開發
+   - 但仍建議保留基本安全檢查
+   - 使用 `auto` 模式進行自動化測試
+
+3. **監控與日誌**：
+   - 啟用詳細的安全日誌
+   - 監控 approval 請求
+   - 記錄所有安全事件
+
 ## 已知限制與注意事項
 
 - `OpenClawConfig` 的頂層面很多，但深層欄位中仍有 plugin-owned、channel-owned 與 subsystem-owned surfaces；要做到真正「每一個設定都懂」，必須繼續拆子主題文件，而不是試圖用一篇 04 檔案塞完。
@@ -375,4 +580,5 @@ openclaw config set secrets.providers.vault \
 
 ## 更新記錄
 
+- 2026-04-29：新增「安全配置與結構化物件處理」章節，涵蓋 v2026.4.23 的安全修復，包括 Bot approval gates、結構化物件安全渲染、MCP 工具權限隔離與全域安全策略配置
 - 2026-04-24：重寫整份文件；修正錯誤的頂層設定鍵，改以 `OpenClawConfig`、`schema.help.ts`、官方 configuration docs 與 config CLI 為基礎重建內容
