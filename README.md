@@ -1,7 +1,37 @@
 # OpenClaw 學習資料自動化系統
 
-> 建立日期：2026-04-21
-> 維護方式：每 4 小時由 cron 自動更新
+> 建立日期：2026-04-21  
+> 更新日期：2026-05-09  
+> 維護方式：Agentic Pipeline（4 個 AI Agent 協作）
+
+---
+
+## Agentic Pipeline
+
+本工作區採用閉環 4-agent 文件生產流程：
+
+```
+Orchestrator（大腦）
+  ↓ 從 tasks/backlog.json 建立任務卡
+Content Researcher（眼睛）
+  ↓ 研究 OpenClaw 原始碼，產出 Fact Sheet
+Document Writer（雙手）
+  ↓ 撰寫學習指南（>1500 字，含 Mermaid 架構圖）
+Quality Validator（審核）
+  ↓ 通過 → 歸檔 ✅
+  ↓ 未通過 → 退回 Document Writer 修正 🔁
+```
+
+啟動流程：在 GitHub Copilot Chat 中使用 `#agent-launcher` skill 或直接呼叫 Orchestrator agent。
+
+### Agent 定義位置
+
+| Agent | 檔案 |
+|-------|------|
+| Orchestrator | `.github/agents/orchestrator.agent.md` |
+| Content Researcher | `.github/agents/content-researcher.agent.md` |
+| Document Writer | `.github/agents/document-writer.agent.md` |
+| Quality Validator | `.github/agents/quality-validator.agent.md` |
 
 ---
 
@@ -9,7 +39,18 @@
 
 ```
 openclaw-learning/
-├── docs/                     # 主要學習文件
+├── .github/                  # Agentic pipeline 定義
+│   ├── agents/               # 4 個 agent 定義檔
+│   │   ├── orchestrator.agent.md
+│   │   ├── content-researcher.agent.md
+│   │   ├── document-writer.agent.md
+│   │   └── quality-validator.agent.md
+│   ├── instructions/         # 狀態機指令
+│   │   └── orchestrator.instructions.md
+│   └── skills/               # 入口 skill
+│       └── agent-launcher/
+│           └── SKILL.md
+├── docs/                     # 主要學習文件（pipeline 輸出）
 │   ├── 01-introduction.md
 │   ├── 02-environment-setup.md
 │   ├── 03-cli-reference.md
@@ -17,17 +58,19 @@ openclaw-learning/
 │   ├── topic-*.md            # 應用場景主題
 │   ├── tutorial-*.md         # 實戰教學
 │   └── references/           # 參考資料
-│       └── <主題>-ref.md
-├── tasks/                    # 工作任務清單
-│   └── master-task-list.md   # 主任務清單
-├── requments/                # 使用者需求
+├── tasks/                    # 任務管理（JSON 格式）
+│   ├── backlog.json          # 待執行任務清單（20 個主題）
+│   ├── active/               # 進行中任務卡
+│   ├── completed/            # 待驗證任務卡
+│   ├── archived/             # 已通過驗證任務卡
+│   ├── context/              # Fact Sheets（研究結果）
+│   └── specs/                # 舊式任務規格（歷史參考）
+├── requirements/             # 使用者需求
 │   └── req-001-*.md
 ├── logs/                     # 執行日誌
-│   └── autodoc-YYYY-MM-DD.log
+│   └── orchestrator.log
 └── scripts/                  # 自動化腳本
-    ├── manage-cron.sh        # Cron 管理腳本
-    ├── openclaw-learning-cron.md   # Cron 設定說明
-    └── openclaw-learning-prompt.md # Agent 提示詞
+    └── manage-cron.sh
 ```
 
 程式碼分析輸出：

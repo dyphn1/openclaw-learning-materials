@@ -1,0 +1,18 @@
+{
+  "task_id": "task-01",
+  "scope": "openclaw-learning",
+  "subject": "introduction",
+  "priority": "High",
+  "scope_detail": {
+    "source_files": [],
+    "target_doc": "/Users/daniel.chang/Desktop/openclaw-learning/docs/01-introduction.md"
+  },
+  "requirements": [
+    "Must analyze actual TypeScript source code in /Users/daniel.chang/Desktop/openclaw/",
+    "Must include practical CLI examples and configuration patterns",
+    "Must produce a learning guide of at least 1500 words with Mermaid architecture diagrams"
+  ],
+  "status": "Pending",
+  "created_at": "2026-05-09T15:41:00.000Z",
+  "assigned_to": null
+}

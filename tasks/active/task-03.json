@@ -1,0 +1,16 @@
+{
+  "task_id": "task-03",
+  "scope": "openclaw-learning",
+  "subject": "cli-reference",
+  "priority": "High",
+  "scope_detail": {
+    "source_files": [],
+    "target_doc": "/Users/daniel.chang/Desktop/openclaw-learning/docs/03-cli-reference.md"
+  },
+  "requirements": [
+    "Provide comprehensive CLI command reference",
+    "Include examples and usage notes",
+    "Ensure up-to-date with current OpenClaw version"
+  ],
+  "status": "Pending",
+  "created_at": "

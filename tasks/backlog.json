@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "updated_at": "2026-05-09T15:41:10.000Z",
+  "tasks": [
+    {
+      "task_id": "task-01",
+      "subject": "introduction",
+      "title": "OpenClaw Introduction and Overview",
+      "priority": "High",
+      "target_doc": "/Users/daniel.chang/Desktop/openclaw-learning/docs/01-introduction.md",
+      "status": "Active"
+    },
+    {
+      "task_id": "task-02",
+      "subject": "environment-setup",
+      "title": "Installation and Environment Setup",
+      "priority": "High",
+      "target_doc": "/Users/daniel.chang/Desktop/openclaw-learning/docs/02-environment-setup.md",
+      "status": "Active"
+    },
+    {
+      "task_id": "task-03",
+      "subject": "cli-reference",
+      "title": "CLI Commands Complete Reference",
+      "priority": "High",
+      "target_doc": "/Users/daniel.chang/Desktop/openclaw-learning/docs/03-cli-reference.md",
+      "status": "Pending"
+    }
+  ]
+}
